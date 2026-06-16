@@ -1,0 +1,22 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# Local databases
+*.sqlite
+database.sqlite
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+
+# Local environment files
+.env
+**/.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
