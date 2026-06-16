@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { 
   Mic, MicOff, Users, Search, LogOut, Calendar, Download, Plus, 
   ChevronLeft, Trash2, Play, Square, Save, Brain, Clock, MapPin, 
-  UserCheck, AlertCircle, FileText, ArrowRight, UserPlus
+  UserCheck, AlertCircle, FileText, ArrowRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -89,7 +89,6 @@ export default function App() {
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({}); // e.g. {"Speaker 0": "Ahmet"}
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [meetingError, setMeetingError] = useState<string | null>(null);
 
   // References for Media/Sockets
@@ -405,7 +404,6 @@ export default function App() {
     setCurrentMeeting(meetingData);
     setTranscript([]);
     setSpeakerMap({});
-    setAiSummary(null);
     setRecordingSeconds(0);
     setMeetingError(null);
     setIsRecording(false);
@@ -604,7 +602,6 @@ export default function App() {
       if (sumRes.ok) {
         const sumData = await sumRes.json();
         generatedSummary = sumData.summary;
-        setAiSummary(generatedSummary);
       } else {
         generatedSummary = 'Toplantı özeti yapay zeka tarafından oluşturulamadı.';
       }
@@ -682,10 +679,6 @@ export default function App() {
 
   // Export fully formatted notes (metadata + summary + transcript) to MS Word
   const handleExportToWord = (meeting: Meeting) => {
-    const textContent = meeting.transcript
-      .map(item => `${formatTime(item.start)} ${item.speaker}: ${item.text}`)
-      .join('\n');
-
     const participantListHtml = meeting.participants.length > 0
       ? meeting.participants.map(p => `<li>${p}</li>`).join('')
       : '<li>Katılımcı belirtilmedi</li>';
