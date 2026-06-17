@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = window.location.port === '5173' ? 'http://localhost:5000/api' : '/api';
 const DEEPGRAM_API_KEY = '05d2e929a2417549a8ad9703a8221a8e1cdadb16';
 
 interface User {
