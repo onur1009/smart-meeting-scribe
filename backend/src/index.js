@@ -8,6 +8,7 @@ import meetingRoutes from './routes/meetings.js';
 import calendarRoutes from './routes/calendar.js';
 import aiRoutes from './routes/ai.js';
 import adminRoutes from './routes/admin.js';
+import deepgramRoutes from './routes/deepgram.js';
 import db from './config/db.js'; // Ensure database is initialized
 
 dotenv.config();
@@ -26,7 +27,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+// Increase body size limit for long meeting transcripts
+app.use(express.json({ limit: '10mb' }));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -34,6 +36,7 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/deepgram', deepgramRoutes);
 
 // Serve static assets from built frontend
 app.use(express.static(publicPath));

@@ -86,7 +86,7 @@ body {
   transition: background-color var(--transition), color var(--transition);
 }
 
-.dark body {
+html.dark body {
   background-image: 
     radial-gradient(at 0% 0%, rgba(34, 71, 182, 0.12) 0px, transparent 50%),
     radial-gradient(at 100% 100%, rgba(238, 34, 41, 0.08) 0px, transparent 50%);
@@ -100,7 +100,7 @@ body {
 ::-webkit-scrollbar-track {
   background: rgba(0,0,0,0.05);
 }
-.dark ::-webkit-scrollbar-track {
+html.dark ::-webkit-scrollbar-track {
   background: rgba(0,0,0,0.2);
 }
 ::-webkit-scrollbar-thumb {
@@ -129,7 +129,7 @@ body {
   max-width: 440px;
   box-shadow: var(--shadow-lg);
   text-align: center;
-  transition: var(--transition);
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
 }
 
 .auth-logo {
@@ -559,7 +559,7 @@ header.navbar {
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid var(--border-glass);
 }
 
 /* Meeting Room Layout */
@@ -641,6 +641,7 @@ header.navbar {
   border-radius: var(--radius-md);
   padding: 14px 18px;
   animation: fadeIn 0.3s ease;
+  transition: background var(--transition), border-color var(--transition);
 }
 
 .speaker-header {
@@ -825,6 +826,7 @@ header.navbar {
   width: 100%;
   max-width: 500px;
   box-shadow: var(--shadow-lg);
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
 }
 
 .modal-header {
@@ -841,6 +843,18 @@ header.navbar {
 .text-success { color: var(--success); }
 .text-danger { color: var(--danger); }
 .text-warning { color: var(--warning); }
+
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
 
 /* Bulk Action & Card Selection Styles */
 .bulk-actions-bar {

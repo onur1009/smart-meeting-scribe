@@ -89,4 +89,36 @@ router.delete('/meetings/:id', (req, res) => {
   });
 });
 
+// GET /api/admin/meetings/:id - Inspect any meeting details (admin can view any user's meeting)
+router.get('/meetings/:id', (req, res) => {
+  const meetingId = req.params.id;
+
+  const query = `
+    SELECT meetings.*, users.email AS creator_email, users.name AS creator_name
+    FROM meetings
+    JOIN users ON meetings.user_id = users.id
+    WHERE meetings.id = ?
+  `;
+
+  db.get(query, [meetingId], (err, row) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Toplantı detayları alınırken hata oluştu.' });
+    }
+    if (!row) {
+      return res.status(404).json({ error: 'Toplantı bulunamadı.' });
+    }
+
+    try {
+      row.participants = JSON.parse(row.participants || '[]');
+      row.transcript = JSON.parse(row.transcript || '[]');
+    } catch (e) {
+      row.participants = [];
+      row.transcript = [];
+    }
+
+    res.json(row);
+  });
+});
+
 export default router;

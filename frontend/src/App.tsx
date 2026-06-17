@@ -6,8 +6,9 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-const API_BASE = window.location.port === '5173' ? 'http://localhost:5000/api' : '/api';
-const DEEPGRAM_API_KEY = '05d2e929a2417549a8ad9703a8221a8e1cdadb16';
+// Detect dev vs production: Vite dev server runs on 5173/5174, backend on 5000
+const isDev = ['5173', '5174', '5175'].includes(window.location.port);
+const API_BASE = isDev ? 'http://localhost:5000/api' : '/api';
 
 interface User {
   id: string;
@@ -55,33 +56,29 @@ function MetroLogo({ size = 28 }: MetroLogoProps) {
     <svg 
       width={size} 
       height={size} 
-      viewBox="0 0 100 100" 
+      viewBox="0 0 120 120" 
       fill="none" 
       xmlns="http://www.w3.org/2000/svg"
       style={{ verticalAlign: 'middle', transition: 'transform 0.3s ease' }}
       className="metro-logo-svg"
     >
-      <circle cx="50" cy="50" r="46" fill="#2247B6" stroke="#ffffff" strokeWidth="3" />
+      {/* Outer rounded square - Metro style */}
+      <rect x="4" y="4" width="112" height="112" rx="24" fill="#2247B6" />
+      {/* Red horizontal rail line */}
+      <rect x="14" y="54" width="92" height="12" rx="6" fill="#EE2229" />
+      {/* White 'M' letterform */}
       <path 
-        d="M20,50 L80,50" 
-        stroke="#EE2229" 
-        strokeWidth="6" 
-        strokeLinecap="round" 
-      />
-      <path 
-        d="M25,70 L25,30 L50,52 L75,30 L75,70" 
+        d="M28,82 L28,38 L44,58 L60,38 L76,58 L92,38 L92,82" 
         stroke="#ffffff" 
-        strokeWidth="9" 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
-      />
-      <path 
-        d="M42,50 L50,58 L58,50" 
-        stroke="#EE2229" 
-        strokeWidth="5" 
+        strokeWidth="8" 
         strokeLinecap="round" 
         strokeLinejoin="round"
+        fill="none"
       />
+      {/* Small station dots */}
+      <circle cx="28" cy="60" r="4" fill="#ffffff" />
+      <circle cx="60" cy="60" r="4" fill="#ffffff" />
+      <circle cx="92" cy="60" r="4" fill="#ffffff" />
     </svg>
   );
 }
@@ -166,6 +163,7 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   // Dashboard State
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -414,7 +412,8 @@ export default function App() {
 
   const handleInspectMeeting = async (meetingId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/meetings/${meetingId}`, {
+      // Use admin endpoint so we can inspect any user's meeting
+      const res = await fetch(`${API_BASE}/admin/meetings/${meetingId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -434,6 +433,7 @@ export default function App() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    setIsAuthLoading(true);
     const endpoint = authMode === 'login' ? '/auth/login' : '/auth/register';
     const payload = authMode === 'login' 
       ? { email: authEmail, password: authPassword }
@@ -464,6 +464,8 @@ export default function App() {
       setAuthName('');
     } catch (err) {
       setAuthError('Sunucu bağlantı hatası oluştu');
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -540,6 +542,22 @@ export default function App() {
   const startRecordingFlow = async () => {
     setMeetingError(null);
     try {
+      // Fetch Deepgram API key securely from backend
+      let deepgramKey: string;
+      try {
+        const keyRes = await fetch(`${API_BASE}/deepgram/token`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!keyRes.ok) {
+          const errData = await keyRes.json().catch(() => ({ error: 'Bilinmeyen hata' }));
+          throw new Error(errData.error || 'Deepgram API anahtarı alınamadı.');
+        }
+        const keyData = await keyRes.json();
+        deepgramKey = keyData.apiKey;
+      } catch (keyErr: any) {
+        throw new Error(`Ses analiz servisi yapılandırılamadı: ${keyErr.message}`);
+      }
+
       let stream: MediaStream;
       const isOnlineMode = currentMeeting?.isOnlineMode;
 
@@ -608,10 +626,10 @@ export default function App() {
       analyserRef.current = audioCtx.createAnalyser();
       source.connect(analyserRef.current);
 
-      // Connect to Deepgram with Diarization enabled
+      // Connect to Deepgram with Diarization enabled (key from backend)
       const socket = new WebSocket(
         `wss://api.deepgram.com/v1/listen?model=nova-2&language=tr&smart_format=true&interim_results=true&diarize_model=latest`,
-        ['token', DEEPGRAM_API_KEY]
+        ['token', deepgramKey]
       );
       socketRef.current = socket;
 
@@ -882,7 +900,8 @@ export default function App() {
         setMeetings(meetings.filter(m => m.id !== meetingId));
         setSelectedMeetingIds(prev => prev.filter(id => id !== meetingId));
         if (selectedMeeting?.id === meetingId) {
-          setView('dashboard');
+          // Navigate back to the correct panel based on context
+          setView(viewingFromAdmin ? 'admin' : 'dashboard');
           setSelectedMeeting(null);
         }
       }
@@ -1079,8 +1098,8 @@ export default function App() {
               />
             </div>
 
-            <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: '10px' }}>
-              {authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}
+            <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: '10px' }} disabled={isAuthLoading}>
+              {isAuthLoading ? 'Lütfen bekleyin...' : (authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
             </button>
           </form>
 
@@ -1288,6 +1307,7 @@ export default function App() {
             <div className="section-title">
               <Calendar size={20} className="text-primary" />
               <h3>Senkronize Takvim Etkinlikleri (Google & Outlook)</h3>
+              <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '3px 8px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>Demo Veri</span>
             </div>
             <div className="calendar-grid">
               {calendarEvents.map((event) => (
@@ -1589,13 +1609,15 @@ export default function App() {
               </div>
             )}
 
-            {transcript.map((line, idx) => (
+            {transcript.map((line, idx) => {
+              const displayName = speakerMap[line.speaker] || line.speaker;
+              return (
               <div key={idx} className="dialogue-bubble">
                 <div className="speaker-header">
                   <div className="speaker-name">
                     <Users size={12} />
                     <EditableSpeakerName 
-                      initialValue={speakerMap[line.speaker] || line.speaker}
+                      initialValue={displayName}
                       onSave={(newName) => handleRenameSpeaker(line.speaker, newName)}
                     />
                   </div>
@@ -1603,7 +1625,8 @@ export default function App() {
                 </div>
                 <div className="dialogue-text">{line.text}</div>
               </div>
-            ))}
+            );
+            })}
             <div ref={transcriptEndRef} />
           </div>
 
