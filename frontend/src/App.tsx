@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
   Mic, MicOff, Users, Search, LogOut, Calendar, Download, Plus, 
-  ChevronLeft, Trash2, Play, Square, Save, Brain, Clock, MapPin, 
-  UserCheck, AlertCircle, FileText, ArrowRight
+  ChevronLeft, Trash2, Play, Square, Save, Clock, MapPin, 
+  UserCheck, AlertCircle, FileText, ArrowRight, Sun, Moon, HelpCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -44,6 +44,46 @@ interface CalendarEvent {
   time: string;
   location: string;
   participants: string[];
+}
+
+interface MetroLogoProps {
+  size?: number;
+}
+
+function MetroLogo({ size = 28 }: MetroLogoProps) {
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 100 100" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ verticalAlign: 'middle', transition: 'transform 0.3s ease' }}
+      className="metro-logo-svg"
+    >
+      <circle cx="50" cy="50" r="46" fill="#2247B6" stroke="#ffffff" strokeWidth="3" />
+      <path 
+        d="M20,50 L80,50" 
+        stroke="#EE2229" 
+        strokeWidth="6" 
+        strokeLinecap="round" 
+      />
+      <path 
+        d="M25,70 L25,30 L50,52 L75,30 L75,70" 
+        stroke="#ffffff" 
+        strokeWidth="9" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+      />
+      <path 
+        d="M42,50 L50,58 L58,50" 
+        stroke="#EE2229" 
+        strokeWidth="5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 interface EditableSpeakerNameProps {
@@ -91,6 +131,31 @@ function EditableSpeakerName({ initialValue, onSave, style }: EditableSpeakerNam
 }
 
 export default function App() {
+  // Theme State
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    (localStorage.getItem('theme') as 'light' | 'dark') || 'light'
+  );
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  // Guidelines widget visibility
+  const [showGuidelines, setShowGuidelines] = useState<boolean>(
+    localStorage.getItem('showGuidelines') !== 'false'
+  );
+
+  const toggleGuidelines = () => {
+    const newVal = !showGuidelines;
+    setShowGuidelines(newVal);
+    localStorage.setItem('showGuidelines', String(newVal));
+  };
+
   // Auth State
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [currentUser, setCurrentUser] = useState<User | null>(
@@ -184,7 +249,7 @@ export default function App() {
         animationFrameRef.current = requestAnimationFrame(draw);
         analyser.getByteFrequencyData(dataArray);
         
-        ctx.fillStyle = '#131a2c';
+        ctx.fillStyle = theme === 'dark' ? '#131a2c' : '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         const barWidth = (canvas.width / bufferLength) * 1.5;
@@ -196,8 +261,8 @@ export default function App() {
           
           // Gradient colors
           const grad = ctx.createLinearGradient(0, canvas.height, 0, 0);
-          grad.addColorStop(0, '#6366f1');
-          grad.addColorStop(1, '#8b5cf6');
+          grad.addColorStop(0, '#2247B6'); // Metro Blue
+          grad.addColorStop(1, '#EE2229'); // Metro Red
           
           ctx.fillStyle = grad;
           ctx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
@@ -934,10 +999,29 @@ export default function App() {
   // Render Login & Registration screen
   if (!token) {
     return (
-      <div className="auth-container">
+      <div className="auth-container" style={{ position: 'relative' }}>
+        <button 
+          className="btn btn-secondary" 
+          style={{ 
+            position: 'absolute', 
+            top: '24px', 
+            right: '24px', 
+            padding: '8px', 
+            borderRadius: '50%', 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            width: '36px',
+            height: '36px'
+          }}
+          onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+          title={theme === 'light' ? 'Koyu Tema' : 'Açık Tema'}
+        >
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
         <div className="auth-card">
           <div className="auth-logo">
-            <Brain size={36} />
+            <MetroLogo size={36} />
             <h1>Smart Meeting Scribe</h1>
           </div>
           
@@ -1023,7 +1107,7 @@ export default function App() {
       <div className="dashboard-layout">
         <header className="navbar">
           <div className="nav-brand">
-            <Brain size={28} />
+            <MetroLogo size={28} />
             <h1>Smart Meeting Scribe</h1>
           </div>
           <div className="nav-user">
@@ -1041,6 +1125,22 @@ export default function App() {
                 Yönetici Paneli
               </button>
             )}
+            <button 
+              className="btn btn-secondary" 
+              style={{ 
+                padding: '8px', 
+                borderRadius: '50%', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                width: '36px', 
+                height: '36px' 
+              }}
+              onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+              title={theme === 'light' ? 'Koyu Tema' : 'Açık Tema'}
+            >
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
             <div className="user-badge">
               <UserCheck size={14} />
               <span>{currentUser?.name} ({currentUser?.role})</span>
@@ -1061,6 +1161,121 @@ export default function App() {
               <Plus size={18} />
               Toplantı Başlat
             </button>
+          </div>
+
+          {/* Kullanım Yönergesi (How-to-Use Guide) */}
+          <div className="calendar-card" style={{ marginBottom: '40px', padding: '24px', position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={toggleGuidelines}>
+              <div className="section-title" style={{ margin: 0, border: 'none' }}>
+                <HelpCircle size={20} style={{ color: 'var(--accent-primary)' }} />
+                <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Nasıl Kullanılır? Toplantı Notu Oluşturma Rehberi</h3>
+              </div>
+              <span className="text-btn" style={{ fontSize: '13px', textDecoration: 'none' }}>
+                {showGuidelines ? 'Gizle ▲' : 'Göster ▼'}
+              </span>
+            </div>
+            
+            {showGuidelines && (
+              <div style={{ 
+                marginTop: '20px', 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+                gap: '20px',
+                animation: 'fadeIn 0.3s ease'
+              }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ 
+                    backgroundColor: 'rgba(34, 71, 182, 0.1)', 
+                    color: '#2247B6', 
+                    borderRadius: '50%', 
+                    width: '32px', 
+                    height: '32px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontWeight: 'bold',
+                    flexShrink: 0
+                  }}>
+                    1
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Toplantı Başlatın</h4>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                      "Toplantı Başlat" butonuna tıklayıp başlık, tarih, katılımcılar gibi bilgileri girerek hazırlanın.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ 
+                    backgroundColor: 'rgba(238, 34, 41, 0.1)', 
+                    color: '#EE2229', 
+                    borderRadius: '50%', 
+                    width: '32px', 
+                    height: '32px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontWeight: 'bold',
+                    flexShrink: 0
+                  }}>
+                    2
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Online Toplantı Modu</h4>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                      Zoom, Meet, Teams veya benzeri platformlardan ses kaydetmek için "Online Toplantı Modu" seçeneğini aktif edin.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ 
+                    backgroundColor: 'rgba(34, 71, 182, 0.1)', 
+                    color: '#2247B6', 
+                    borderRadius: '50%', 
+                    width: '32px', 
+                    height: '32px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontWeight: 'bold',
+                    flexShrink: 0
+                  }}>
+                    3
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Sistem Sesini Paylaşın</h4>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                      Açılan ekran paylaşımı penceresinde "Sistem sesini paylaş" (Share system audio) kutucuğunu mutlaka işaretleyin.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ 
+                    backgroundColor: 'rgba(238, 34, 41, 0.1)', 
+                    color: '#EE2229', 
+                    borderRadius: '50%', 
+                    width: '32px', 
+                    height: '32px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontWeight: 'bold',
+                    flexShrink: 0
+                  }}>
+                    4
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Kaydet ve Rapor Al</h4>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                      Konuşmalar bittiğinde "Tamamla & Kaydet" butonuna tıklayarak yapay zeka özetli Word raporunuzu indirin.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Calendar Integration Widget */}
@@ -1327,11 +1542,29 @@ export default function App() {
               <p>Toplantı Başlatıldı • Canlı Ses İşleniyor</p>
             </div>
             
-            <div className={`status-badge ${isRecording && !isPaused ? 'active' : ''}`}>
-              <Mic size={14} />
-              <span>
-                {isRecording ? (isPaused ? 'Duraklatıldı' : 'Ses Kaydediliyor') : 'Kayıt Bekliyor'}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ 
+                  padding: '8px', 
+                  borderRadius: '50%', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  width: '36px', 
+                  height: '36px' 
+                }}
+                onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+                title={theme === 'light' ? 'Koyu Tema' : 'Açık Tema'}
+              >
+                {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+              </button>
+              <div className={`status-badge ${isRecording && !isPaused ? 'active' : ''}`}>
+                <Mic size={14} />
+                <span>
+                  {isRecording ? (isPaused ? 'Duraklatıldı' : 'Ses Kaydediliyor') : 'Kayıt Bekliyor'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1462,7 +1695,7 @@ export default function App() {
   if (view === 'detail' && selectedMeeting) {
     return (
       <div className="detail-view">
-        <div className="back-header">
+        <div className="back-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button className="btn btn-secondary" onClick={() => { 
             if (viewingFromAdmin) {
               setView('admin');
@@ -1472,6 +1705,22 @@ export default function App() {
             setSelectedMeeting(null); 
           }}>
             <ChevronLeft size={16} /> {viewingFromAdmin ? 'Yönetici Paneline Dön' : 'Panoya Geri Dön'}
+          </button>
+          <button 
+            className="btn btn-secondary" 
+            style={{ 
+              padding: '8px', 
+              borderRadius: '50%', 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              width: '36px', 
+              height: '36px' 
+            }}
+            onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+            title={theme === 'light' ? 'Koyu Tema' : 'Açık Tema'}
+          >
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
         </div>
 
@@ -1541,7 +1790,7 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div>
               <div className="section-title">
-                <Brain size={18} className="text-primary" />
+                <MetroLogo size={18} />
                 <h3>Yapay Zeka Toplantı Analizi</h3>
               </div>
 
@@ -1588,7 +1837,7 @@ export default function App() {
       <div className="dashboard-layout">
         <header className="navbar">
           <div className="nav-brand">
-            <Brain size={28} />
+            <MetroLogo size={28} />
             <h1>Smart Meeting Scribe - Yönetici Paneli</h1>
           </div>
           <div className="nav-user">
@@ -1601,6 +1850,22 @@ export default function App() {
               }}
             >
               Kişisel Panoya Git
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              style={{ 
+                padding: '8px', 
+                borderRadius: '50%', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                width: '36px', 
+                height: '36px' 
+              }}
+              onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+              title={theme === 'light' ? 'Koyu Tema' : 'Açık Tema'}
+            >
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
             </button>
             <div className="user-badge">
               <UserCheck size={14} />
