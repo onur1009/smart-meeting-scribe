@@ -50,7 +50,7 @@ ${Array.from(new Set(transcript.map(item => item.speaker))).map(sp => `- **${sp}
   try {
     // Initialize Google Gen AI SDK
     const ai = new GoogleGenerativeAI(apiKey);
-    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `Aşağıdaki toplantı deşifresini incele ve profesyonel, Türkçe bir toplantı özeti çıkar. 
 Formatın Markdown yapısında olmalı ve şu bölümleri içermelidir:
