@@ -648,7 +648,7 @@ export default function App() {
 
       // Connect to Deepgram with Diarization enabled (key from backend)
       const socket = new WebSocket(
-        `wss://api.deepgram.com/v1/listen?model=nova-2&language=tr&smart_format=true&interim_results=true&diarize_model=latest`,
+        `wss://api.deepgram.com/v1/listen?model=nova-2&language=tr&smart_format=true&interim_results=true&diarize=true`,
         ['token', deepgramKey]
       );
       socketRef.current = socket;
