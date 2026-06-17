@@ -825,6 +825,19 @@ export default function App() {
     }
   };
 
+  // Cancel meeting completely and discard all unsaved data
+  const handleCancelMeeting = () => {
+    if (confirm('Bu toplantı kaydını iptal etmek istediğinize emin misiniz? Tüm kaydedilen veriler anında silinecek ve geri alınamayacaktır.')) {
+      stopRecordingFlow();
+      setCurrentMeeting(null);
+      setTranscript([]);
+      setSpeakerMap({});
+      setRecordingSeconds(0);
+      setMeetingError(null);
+      setView('dashboard');
+    }
+  };
+
   // Complete meeting, request Gemini AI summary, and save to DB
   const handleFinishAndSaveMeeting = async () => {
     stopRecordingFlow();
@@ -1711,14 +1724,25 @@ export default function App() {
               )}
             </div>
             
-            <button 
-              className="btn btn-primary" 
-              style={{ background: 'var(--accent-gradient)' }}
-              onClick={handleFinishAndSaveMeeting}
-              disabled={isSummarizing || transcript.length === 0}
-            >
-              <Save size={16} /> {isSummarizing ? 'Özetleniyor...' : 'Tamamla & Kaydet'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                onClick={handleCancelMeeting}
+                disabled={isSummarizing}
+              >
+                <Trash2 size={16} /> İptal Et
+              </button>
+              
+              <button 
+                className="btn btn-primary" 
+                style={{ background: 'var(--accent-gradient)' }}
+                onClick={handleFinishAndSaveMeeting}
+                disabled={isSummarizing || transcript.length === 0}
+              >
+                <Save size={16} /> {isSummarizing ? 'Özetleniyor...' : 'Tamamla & Kaydet'}
+              </button>
+            </div>
           </div>
         </div>
 
