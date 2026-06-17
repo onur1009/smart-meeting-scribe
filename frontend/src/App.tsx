@@ -706,11 +706,16 @@ export default function App() {
         const sumData = await sumRes.json();
         generatedSummary = sumData.summary;
       } else {
-        generatedSummary = 'Toplantı özeti yapay zeka tarafından oluşturulamadı.';
+        try {
+          const errData = await sumRes.json();
+          generatedSummary = `Toplantı özeti yapay zeka tarafından oluşturulamadı. Sunucu Hatası: ${errData.error || sumRes.statusText}`;
+        } catch (e) {
+          generatedSummary = 'Toplantı özeti yapay zeka tarafından oluşturulamadı. Sunucu hata döndürdü.';
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      generatedSummary = 'Yapay zeka bağlantısı kurulamadı. Özet oluşturma atlandı.';
+      generatedSummary = `Yapay zeka bağlantısı kurulamadı. Hata: ${err.message || err}`;
     } finally {
       setIsSummarizing(false);
     }
