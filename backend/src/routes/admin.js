@@ -121,4 +121,36 @@ router.get('/meetings/:id', (req, res) => {
   });
 });
 
+// GET /api/admin/users/:id/meetings - Inspect a specific user's meetings
+router.get('/users/:id/meetings', (req, res) => {
+  const targetUserId = req.params.id;
+
+  const query = `
+    SELECT * FROM meetings 
+    WHERE user_id = ? 
+    ORDER BY created_at DESC
+  `;
+
+  db.all(query, [targetUserId], (err, rows) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Kullanıcı toplantıları alınırken hata oluştu.' });
+    }
+
+    const parsedMeetings = rows.map(row => {
+      try {
+        return {
+          ...row,
+          participants: JSON.parse(row.participants || '[]'),
+          transcript: JSON.parse(row.transcript || '[]')
+        };
+      } catch (e) {
+        return { ...row, participants: [], transcript: [] };
+      }
+    });
+
+    res.json(parsedMeetings);
+  });
+});
+
 export default router;

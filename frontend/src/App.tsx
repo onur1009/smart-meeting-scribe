@@ -184,7 +184,8 @@ export default function App() {
   const [adminUsers, setAdminUsers] = useState<User[]>([]);
   const [adminMeetings, setAdminMeetings] = useState<any[]>([]);
   const [adminTab, setAdminTab] = useState<'users' | 'meetings'>('users');
-  const [viewingFromAdmin, setViewingFromAdmin] = useState(false);
+  const [viewingFromAdmin, setViewingFromAdmin] = useState<boolean>(false);
+  const [impersonatedUser, setImpersonatedUser] = useState<User | null>(null);
 
   // Meeting Room Recording State
   const [currentMeeting, setCurrentMeeting] = useState<Meeting | null>(null);
@@ -424,6 +425,28 @@ export default function App() {
     }
   };
 
+  const handleImpersonateUser = async (user: User) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}/meetings`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const userMeetings = await res.json();
+        setMeetings(userMeetings); // Temporarily replace local meetings with the user's meetings
+        setImpersonatedUser(user);
+        setView('dashboard');
+        setViewingFromAdmin(true); // Treat as an admin view so they can go back
+      } else {
+        alert('Kullanıcı verileri alınırken bir hata oluştu.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Kullanıcı paneline erişilirken sunucu hatası oluştu.');
+    }
+  };
+
   // Auth Operations
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -471,6 +494,8 @@ export default function App() {
     setCurrentUser(null);
     setSelectedMeetingIds([]);
     setView('dashboard');
+    setImpersonatedUser(null);
+    setViewingFromAdmin(false);
   };
 
   // Select a synced calendar event to prefill form
@@ -1171,10 +1196,30 @@ export default function App() {
           </div>
         </header>
 
+        {impersonatedUser && (
+          <div style={{ backgroundColor: '#f97316', color: '#fff', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={18} />
+              Admin olarak "{impersonatedUser.name}" adlı kullanıcının panelindesiniz.
+            </span>
+            <button 
+              className="btn" 
+              style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
+              onClick={() => {
+                setImpersonatedUser(null);
+                fetchMeetings(); // Reload the admin's own meetings
+                setView('admin');
+              }}
+            >
+              Paneli Kapat ve Geri Dön
+            </button>
+          </div>
+        )}
+
         <main className="dashboard-content">
           <div className="dashboard-hero">
             <div>
-              <h2>Toplantılarınızı Akıllandırın</h2>
+              <h2>Hoş Geldiniz, {impersonatedUser ? impersonatedUser.name : (currentUser?.name || currentUser?.email.split('@')[0])}</h2>
               <p>Gerçek zamanlı konuşmacı analizi ve yapay zeka özetleriyle hiçbir kararı gözden kaçırmayın.</p>
             </div>
             <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
@@ -1951,7 +1996,14 @@ export default function App() {
                       <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
                         {user.created_at ? new Date(user.created_at).toLocaleDateString('tr-TR') : '-'}
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
+                      <td style={{ padding: '12px', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button 
+                          className="btn btn-secondary" 
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                          onClick={() => handleImpersonateUser(user)}
+                        >
+                          Paneline Git
+                        </button>
                         <button 
                           className="btn btn-secondary" 
                           style={{ padding: '6px 12px', fontSize: '12px' }}
