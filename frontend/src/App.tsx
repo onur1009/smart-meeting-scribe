@@ -33,6 +33,7 @@ interface Meeting {
   transcript: TranscriptSegment[];
   summary: string | null;
   created_at?: string;
+  isOnlineMode?: boolean;
 }
 
 interface CalendarEvent {
@@ -59,6 +60,7 @@ export default function App() {
 
   // Dashboard State
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [selectedMeetingIds, setSelectedMeetingIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -70,6 +72,7 @@ export default function App() {
   const [newMeetingLocation, setNewMeetingLocation] = useState('');
   const [newMeetingParticipant, setNewMeetingParticipant] = useState('');
   const [newMeetingParticipants, setNewMeetingParticipants] = useState<string[]>([]);
+  const [isOnlineMeetingMode, setIsOnlineMeetingMode] = useState(false);
   
   // App Navigation State
   const [view, setView] = useState<'dashboard' | 'meeting' | 'detail' | 'admin'>('dashboard');
@@ -95,6 +98,7 @@ export default function App() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
+  const activeStreamsRef = useRef<MediaStream[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const timerIntervalRef = useRef<any>(null);
@@ -204,6 +208,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setMeetings(data);
+        setSelectedMeetingIds([]); // Clear selection when data changes
       }
     } catch (err) {
       console.error('Failed to fetch meetings:', err);
@@ -358,6 +363,7 @@ export default function App() {
     localStorage.removeItem('user');
     setToken(null);
     setCurrentUser(null);
+    setSelectedMeetingIds([]);
     setView('dashboard');
   };
 
@@ -398,7 +404,8 @@ export default function App() {
       location: newMeetingLocation,
       participants: newMeetingParticipants,
       transcript: [],
-      summary: null
+      summary: null,
+      isOnlineMode: isOnlineMeetingMode
     };
 
     setCurrentMeeting(meetingData);
@@ -417,19 +424,79 @@ export default function App() {
     setNewMeetingTitle('');
     setNewMeetingLocation('');
     setNewMeetingParticipants([]);
+    setIsOnlineMeetingMode(false);
   };
 
   // Setup audio stream and Deepgram connection
   const startRecordingFlow = async () => {
     setMeetingError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      let stream: MediaStream;
+      const isOnlineMode = currentMeeting?.isOnlineMode;
+
+      if (isOnlineMode) {
+        // Capture Microphone
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        
+        // Capture Screen/System Audio
+        let screenStream: MediaStream;
+        try {
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
+            audio: true,
+            video: true
+          });
+        } catch (e) {
+          micStream.getTracks().forEach(t => t.stop());
+          throw new Error('Ekran paylaşımı başlatılamadı veya iptal edildi.');
+        }
+
+        const screenAudioTracks = screenStream.getAudioTracks();
+        if (screenAudioTracks.length === 0) {
+          micStream.getTracks().forEach(t => t.stop());
+          screenStream.getTracks().forEach(t => t.stop());
+          throw new Error("Sistem sesini kaydetmek için ekran paylaşım penceresinde 'Sistem sesini paylaş' (Share system audio) onay kutusunu işaretlemelisiniz.");
+        }
+
+        // Mix the two audio streams using Web Audio API
+        const audioCtx = new AudioContext();
+        audioContextRef.current = audioCtx;
+
+        const micSource = audioCtx.createMediaStreamSource(micStream);
+        const screenSource = audioCtx.createMediaStreamSource(screenStream);
+        
+        const destination = audioCtx.createMediaStreamDestination();
+
+        // Connect sources to mixed destination
+        micSource.connect(destination);
+        screenSource.connect(destination);
+
+        stream = destination.stream;
+
+        // Keep track of hardware streams so we can stop them on stopRecordingFlow
+        activeStreamsRef.current = [micStream, screenStream];
+
+        // If user stops sharing screen from Chrome's native bar, stop recording gracefully
+        const videoTrack = screenStream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.onended = () => {
+            console.log('Screen sharing ended by user natively.');
+            stopRecordingFlow();
+          };
+        }
+      } else {
+        // Standard microphone-only mode
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        activeStreamsRef.current = [stream];
+      }
+
       audioStreamRef.current = stream;
 
       // Audio visualizer setup
-      audioContextRef.current = new AudioContext();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      analyserRef.current = audioContextRef.current.createAnalyser();
+      const audioCtx = audioContextRef.current || new AudioContext();
+      audioContextRef.current = audioCtx;
+      
+      const source = audioCtx.createMediaStreamSource(stream);
+      analyserRef.current = audioCtx.createAnalyser();
       source.connect(analyserRef.current);
 
       // Connect to Deepgram with Diarization enabled
@@ -524,7 +591,7 @@ export default function App() {
       };
 
     } catch (err: any) {
-      setMeetingError(err.message || 'Mikrofona erişim sağlanamadı. Lütfen izinlerinizi kontrol edin.');
+      setMeetingError(err.message || 'Mikrofona veya sistem sesine erişim sağlanamadı. Lütfen izinlerinizi kontrol edin.');
       stopRecordingFlow();
     }
   };
@@ -553,8 +620,15 @@ export default function App() {
     if (audioStreamRef.current) {
       audioStreamRef.current.getTracks().forEach(track => track.stop());
     }
+    if (activeStreamsRef.current.length > 0) {
+      activeStreamsRef.current.forEach(stream => {
+        stream.getTracks().forEach(track => track.stop());
+      });
+      activeStreamsRef.current = [];
+    }
     if (audioContextRef.current) {
-      audioContextRef.current.close();
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
     }
     setIsRecording(false);
     setIsPaused(false);
@@ -660,6 +734,7 @@ export default function App() {
       });
       if (res.ok) {
         setMeetings(meetings.filter(m => m.id !== meetingId));
+        setSelectedMeetingIds(prev => prev.filter(id => id !== meetingId));
         if (selectedMeeting?.id === meetingId) {
           setView('dashboard');
           setSelectedMeeting(null);
@@ -667,6 +742,51 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleToggleSelectMeeting = (meetingId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedMeetingIds(prev => [...prev, meetingId]);
+    } else {
+      setSelectedMeetingIds(prev => prev.filter(id => id !== meetingId));
+    }
+  };
+
+  const handleToggleSelectAllMeetings = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedMeetingIds(meetings.map(m => m.id));
+    } else {
+      setSelectedMeetingIds([]);
+    }
+  };
+
+  const handleBulkDeleteMeetings = async () => {
+    if (selectedMeetingIds.length === 0) return;
+    
+    const confirmed = window.confirm(`Seçilen ${selectedMeetingIds.length} toplantıyı kalıcı olarak silmek istediğinizden emin misiniz?`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/meetings/bulk-delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ids: selectedMeetingIds })
+      });
+      
+      if (res.ok) {
+        setMeetings(prev => prev.filter(m => !selectedMeetingIds.includes(m.id)));
+        setSelectedMeetingIds([]);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Toplantılar silinirken bir hata oluştu.');
+      }
+    } catch (err) {
+      console.error('Bulk delete failed:', err);
+      alert('Sunucu bağlantısı sırasında hata oluştu.');
     }
   };
 
@@ -926,6 +1046,35 @@ export default function App() {
               </div>
             </div>
 
+            {meetings.length > 0 && (
+              <div className="bulk-actions-bar">
+                <label className="meeting-checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    className="meeting-checkbox"
+                    checked={meetings.length > 0 && selectedMeetingIds.length === meetings.length}
+                    onChange={handleToggleSelectAllMeetings}
+                  />
+                  <span>Tümünü Seç ({meetings.length})</span>
+                </label>
+                
+                {selectedMeetingIds.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      {selectedMeetingIds.length} toplantı seçildi
+                    </span>
+                    <button 
+                      className="btn btn-danger" 
+                      onClick={handleBulkDeleteMeetings}
+                      style={{ padding: '6px 12px', fontSize: '13px', boxShadow: 'none' }}
+                    >
+                      <Trash2 size={14} /> Seçilenleri Sil
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {meetings.length === 0 ? (
               <div className="calendar-card" style={{ padding: '40px', textAlign: 'center', alignItems: 'center' }}>
                 <FileText size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px' }} />
@@ -937,18 +1086,27 @@ export default function App() {
                 {meetings.map((meeting) => (
                   <div 
                     key={meeting.id} 
-                    className="meeting-card"
+                    className={`meeting-card ${selectedMeetingIds.includes(meeting.id) ? 'selected' : ''}`}
                     onClick={() => { setSelectedMeeting(meeting); setView('detail'); }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <div className="meeting-meta">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Calendar size={12} />
-                        <span>{meeting.date}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock size={12} />
-                        <span>{meeting.time}</span>
+                    <div className="meeting-card-header">
+                      <input 
+                        type="checkbox" 
+                        className="meeting-checkbox"
+                        checked={selectedMeetingIds.includes(meeting.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleToggleSelectMeeting(meeting.id, e)}
+                      />
+                      <div className="meeting-meta" style={{ marginBottom: 0, gap: '12px', display: 'flex' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Calendar size={12} />
+                          <span>{meeting.date}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={12} />
+                          <span>{meeting.time}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -1030,6 +1188,19 @@ export default function App() {
                   onChange={(e) => setNewMeetingLocation(e.target.value)}
                   placeholder="Microsoft Teams, Ofis A, vb."
                 />
+              </div>
+
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', marginBottom: '20px' }}>
+                <input 
+                  type="checkbox" 
+                  id="online-meeting-mode"
+                  className="meeting-checkbox"
+                  checked={isOnlineMeetingMode}
+                  onChange={(e) => setIsOnlineMeetingMode(e.target.checked)}
+                />
+                <label htmlFor="online-meeting-mode" style={{ margin: 0, textTransform: 'none', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                  🌐 Online Toplantı Modu (Zoom, Meet, Teams Sesini Kaydet)
+                </label>
               </div>
 
               <div className="form-group">

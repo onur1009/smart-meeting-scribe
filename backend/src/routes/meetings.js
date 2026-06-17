@@ -54,6 +54,27 @@ router.get('/', (req, res) => {
   });
 });
 
+// Bulk delete meetings for user
+router.post('/bulk-delete', (req, res) => {
+  const userId = req.user.id;
+  const { ids } = req.body;
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Toplantı ID listesi gerekli.' });
+  }
+
+  const placeholders = ids.map(() => '?').join(',');
+  const query = `DELETE FROM meetings WHERE user_id = ? AND id IN (${placeholders})`;
+
+  db.run(query, [userId, ...ids], function(err) {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Toplantılar silinirken veritabanı hatası oluştu.' });
+    }
+    res.json({ success: true, message: `${this.changes} toplantı başarıyla silindi.` });
+  });
+});
+
 // Get detailed meeting transcript and summary by ID
 router.get('/:id', (req, res) => {
   const userId = req.user.id;
