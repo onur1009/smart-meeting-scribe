@@ -49,12 +49,14 @@ interface CalendarEvent {
 
 interface MetroLogoProps {
   size?: number;
+  theme?: 'light' | 'dark';
 }
 
-function MetroLogo({ size = 28 }: MetroLogoProps) {
+function MetroLogo({ size = 28, theme = 'light' }: MetroLogoProps) {
+  const logoSrc = theme === 'dark' ? '/logo-dark.png' : '/logo-light.png';
   return (
     <img 
-      src="/logo.png" 
+      src={logoSrc} 
       alt="Smart Meeting Scribe by Metro İstanbul" 
       height={size}
       style={{ 
@@ -1029,8 +1031,7 @@ export default function App() {
         </button>
         <div className="auth-card">
           <div className="auth-logo">
-            <MetroLogo size={36} />
-            <h1>Smart Meeting Scribe</h1>
+            <MetroLogo size={42} theme={theme} />
           </div>
           
           <h2>{authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}</h2>
@@ -1115,7 +1116,7 @@ export default function App() {
       <div className="dashboard-layout">
         <header className="navbar">
           <div className="nav-brand">
-            <MetroLogo size={28} />
+            <MetroLogo size={28} theme={theme} />
             <h1>Smart Meeting Scribe</h1>
           </div>
           <div className="nav-user">
