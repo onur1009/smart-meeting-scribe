@@ -46,6 +46,50 @@ interface CalendarEvent {
   participants: string[];
 }
 
+interface EditableSpeakerNameProps {
+  initialValue: string;
+  onSave: (newValue: string) => void;
+  style?: React.CSSProperties;
+}
+
+function EditableSpeakerName({ initialValue, onSave, style }: EditableSpeakerNameProps) {
+  const [value, setValue] = useState(initialValue);
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  return (
+    <input 
+      type="text" 
+      value={value} 
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => {
+        if (value.trim() && value !== initialValue) {
+          onSave(value);
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        }
+      }}
+      style={style || { 
+        background: 'none', 
+        border: 'none', 
+        borderBottom: '1px dashed var(--accent-primary)', 
+        color: 'inherit', 
+        fontFamily: 'inherit',
+        fontSize: 'inherit', 
+        fontWeight: 'inherit', 
+        outline: 'none', 
+        width: '120px' 
+      }}
+      placeholder="Konuşmacı İsmi"
+    />
+  );
+}
+
 export default function App() {
   // Auth State
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -637,14 +681,7 @@ export default function App() {
   // Update a speaker's name in real-time
   const handleRenameSpeaker = (oldName: string, newName: string) => {
     if (!newName.trim()) return;
-    
-    // Save in speakerMap mapping
     setSpeakerMap(prev => ({ ...prev, [oldName]: newName }));
-    
-    // Update active transcript list
-    setTranscript(prev => 
-      prev.map(item => item.speaker === oldName ? { ...item, speaker: newName } : item)
-    );
   };
 
   const handleRenameSpeakerDetailed = async (oldName: string, newName: string) => {
@@ -720,10 +757,15 @@ export default function App() {
       setIsSummarizing(false);
     }
 
+    const finalTranscript = transcript.map(item => ({
+      ...item,
+      speaker: speakerMap[item.speaker] || item.speaker
+    }));
+
     // Save final meeting object to Database
     const finalMeeting: Meeting = {
       ...currentMeeting!,
-      transcript: transcript,
+      transcript: finalTranscript,
       summary: generatedSummary
     };
 
@@ -1314,11 +1356,9 @@ export default function App() {
                 <div className="speaker-header">
                   <div className="speaker-name">
                     <Users size={12} />
-                    <input 
-                      type="text" 
-                      value={speakerMap[line.speaker] || line.speaker} 
-                      onChange={(e) => handleRenameSpeaker(line.speaker, e.target.value)}
-                      placeholder="Konuşmacı İsmi"
+                    <EditableSpeakerName 
+                      initialValue={speakerMap[line.speaker] || line.speaker}
+                      onSave={(newName) => handleRenameSpeaker(line.speaker, newName)}
                     />
                   </div>
                   <span className="dialogue-time">{formatTime(line.start)}</span>
@@ -1482,12 +1522,10 @@ export default function App() {
                     <div className="speaker-header">
                       <span className="speaker-name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Users size={12} />
-                        <input 
-                          type="text" 
-                          value={line.speaker} 
-                          onChange={(e) => handleRenameSpeakerDetailed(line.speaker, e.target.value)}
+                        <EditableSpeakerName 
+                          initialValue={line.speaker}
+                          onSave={(newName) => handleRenameSpeakerDetailed(line.speaker, newName)}
                           style={{ background: 'none', border: 'none', borderBottom: '1px dashed var(--text-secondary)', color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', outline: 'none', width: '120px' }}
-                          placeholder="Konuşmacı İsmi"
                         />
                       </span>
                       <span className="dialogue-time">{formatTime(line.start)}</span>
