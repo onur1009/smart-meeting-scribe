@@ -648,7 +648,7 @@ export default function App() {
 
       // Connect to Deepgram with Diarization enabled (key from backend)
       const socket = new WebSocket(
-        `wss://api.deepgram.com/v1/listen?model=nova-2&language=tr&smart_format=true&interim_results=true&diarize=true`,
+        `wss://api.deepgram.com/v1/listen?model=nova-2&language=tr&smart_format=true&interim_results=true&diarize=true&endpointing=300`,
         ['token', deepgramKey]
       );
       socketRef.current = socket;
@@ -677,32 +677,36 @@ export default function App() {
         const words = alternatives?.words || [];
 
         if (transcriptText && received.is_final) {
-          const getSpeakerLabel = (speakerVal: any) => {
-            if (speakerVal === undefined || speakerVal === null) return 'Konuşmacı 1';
-            return `Konuşmacı ${Number(speakerVal) + 1}`;
-          };
-
           if (words.length > 0) {
+            // Debugging output to see what Deepgram is returning
+            console.log('Deepgram Words Payload:', words.map((w: any) => ({ word: w.word, speaker: w.speaker })));
+            
+            const getSpeakerLabel = (speakerVal: any) => {
+              if (speakerVal === undefined || speakerVal === null) return 'Konuşmacı 1';
+              return `Konuşmacı ${Number(speakerVal) + 1}`;
+            };
+
             // Group words in this final block by their speaker
             const segments: TranscriptSegment[] = [];
             let currentGroup = {
               speaker: getSpeakerLabel(words[0].speaker),
-              text: words[0].word,
+              text: words[0].punctuated_word || words[0].word,
               start: words[0].start
             };
 
             for (let i = 1; i < words.length; i++) {
               const word = words[i];
               const wordSpeaker = getSpeakerLabel(word.speaker);
+              const textWord = word.punctuated_word || word.word;
               
               if (wordSpeaker === currentGroup.speaker) {
                 // Attach word, checking for punctuation formatting
-                currentGroup.text += (word.word.match(/^[.,!?;:]/) ? '' : ' ') + word.word;
+                currentGroup.text += (textWord.match(/^[.,!?;:]/) ? '' : ' ') + textWord;
               } else {
                 segments.push(currentGroup);
                 currentGroup = {
                   speaker: wordSpeaker,
-                  text: word.word,
+                  text: textWord,
                   start: word.start
                 };
               }
