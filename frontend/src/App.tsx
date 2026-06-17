@@ -53,33 +53,17 @@ interface MetroLogoProps {
 
 function MetroLogo({ size = 28 }: MetroLogoProps) {
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 120 120" 
-      fill="none" 
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ verticalAlign: 'middle', transition: 'transform 0.3s ease' }}
-      className="metro-logo-svg"
-    >
-      {/* Outer rounded square - Metro style */}
-      <rect x="4" y="4" width="112" height="112" rx="24" fill="#2247B6" />
-      {/* Red horizontal rail line */}
-      <rect x="14" y="54" width="92" height="12" rx="6" fill="#EE2229" />
-      {/* White 'M' letterform */}
-      <path 
-        d="M28,82 L28,38 L44,58 L60,38 L76,58 L92,38 L92,82" 
-        stroke="#ffffff" 
-        strokeWidth="8" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* Small station dots */}
-      <circle cx="28" cy="60" r="4" fill="#ffffff" />
-      <circle cx="60" cy="60" r="4" fill="#ffffff" />
-      <circle cx="92" cy="60" r="4" fill="#ffffff" />
-    </svg>
+    <img 
+      src="/logo.png" 
+      alt="Smart Meeting Scribe by Metro İstanbul" 
+      height={size}
+      style={{ 
+        verticalAlign: 'middle', 
+        transition: 'transform 0.3s ease',
+        objectFit: 'contain'
+      }}
+      className="metro-logo-img"
+    />
   );
 }
 
