@@ -610,7 +610,7 @@ export default function App() {
 
       // Connect to Deepgram with Diarization enabled
       const socket = new WebSocket(
-        `wss://api.deepgram.com/v1/listen?model=nova-2&language=tr&smart_format=true&interim_results=true&diarize=true`,
+        `wss://api.deepgram.com/v1/listen?model=nova-2&language=tr&smart_format=true&interim_results=true&diarize_model=latest`,
         ['token', DEEPGRAM_API_KEY]
       );
       socketRef.current = socket;
@@ -639,18 +639,23 @@ export default function App() {
         const words = alternatives?.words || [];
 
         if (transcriptText && received.is_final) {
+          const getSpeakerLabel = (speakerVal: any) => {
+            if (speakerVal === undefined || speakerVal === null) return 'Konuşmacı 1';
+            return `Konuşmacı ${Number(speakerVal) + 1}`;
+          };
+
           if (words.length > 0) {
             // Group words in this final block by their speaker
             const segments: TranscriptSegment[] = [];
             let currentGroup = {
-              speaker: `Konuşmacı ${words[0].speaker}`,
+              speaker: getSpeakerLabel(words[0].speaker),
               text: words[0].word,
               start: words[0].start
             };
 
             for (let i = 1; i < words.length; i++) {
               const word = words[i];
-              const wordSpeaker = `Konuşmacı ${word.speaker}`;
+              const wordSpeaker = getSpeakerLabel(word.speaker);
               
               if (wordSpeaker === currentGroup.speaker) {
                 // Attach word, checking for punctuation formatting
@@ -684,7 +689,7 @@ export default function App() {
             // Fallback for simple transcription without word coordinates
             setTranscript(prev => [
               ...prev,
-              { speaker: 'Konuşmacı 0', text: transcriptText, start: received.start }
+              { speaker: 'Konuşmacı 1', text: transcriptText, start: received.start }
             ]);
           }
         }
