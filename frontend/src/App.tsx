@@ -647,6 +647,35 @@ export default function App() {
     );
   };
 
+  const handleRenameSpeakerDetailed = async (oldName: string, newName: string) => {
+    if (!selectedMeeting || !newName.trim()) return;
+
+    const updatedTranscript = selectedMeeting.transcript.map(item => 
+      item.speaker === oldName ? { ...item, speaker: newName } : item
+    );
+    
+    const updatedMeeting = {
+      ...selectedMeeting,
+      transcript: updatedTranscript
+    };
+
+    setSelectedMeeting(updatedMeeting);
+
+    try {
+      await fetch(`${API_BASE}/meetings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedMeeting)
+      });
+      setMeetings(prev => prev.map(m => m.id === selectedMeeting.id ? updatedMeeting : m));
+    } catch (err) {
+      console.error('Failed to save renamed speaker:', err);
+    }
+  };
+
   // Complete meeting, request Gemini AI summary, and save to DB
   const handleFinishAndSaveMeeting = async () => {
     stopRecordingFlow();
@@ -1446,8 +1475,15 @@ export default function App() {
                 selectedMeeting.transcript.map((line, idx) => (
                   <div key={idx} className="dialogue-bubble">
                     <div className="speaker-header">
-                      <span className="speaker-name">
-                        <Users size={12} /> {line.speaker}
+                      <span className="speaker-name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Users size={12} />
+                        <input 
+                          type="text" 
+                          value={line.speaker} 
+                          onChange={(e) => handleRenameSpeakerDetailed(line.speaker, e.target.value)}
+                          style={{ background: 'none', border: 'none', borderBottom: '1px dashed var(--text-secondary)', color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', outline: 'none', width: '120px' }}
+                          placeholder="Konuşmacı İsmi"
+                        />
                       </span>
                       <span className="dialogue-time">{formatTime(line.start)}</span>
                     </div>
