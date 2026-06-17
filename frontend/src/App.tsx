@@ -69,6 +69,15 @@ function MetroLogo({ size = 28, theme = 'light' }: MetroLogoProps) {
   );
 }
 
+function PageWatermark({ theme }: { theme: 'light' | 'dark' }) {
+  const logoSrc = theme === 'dark' ? '/logo-dark.png' : '/logo-light.png';
+  return (
+    <div className="page-watermark">
+      <img src={logoSrc} alt="" />
+    </div>
+  );
+}
+
 interface EditableSpeakerNameProps {
   initialValue: string;
   onSave: (newValue: string) => void;
@@ -1010,6 +1019,7 @@ export default function App() {
   if (!token) {
     return (
       <div className="auth-container" style={{ position: 'relative' }}>
+        <PageWatermark theme={theme} />
         <button 
           className="btn btn-secondary" 
           style={{ 
@@ -1031,7 +1041,7 @@ export default function App() {
         </button>
         <div className="auth-card">
           <div className="auth-logo">
-            <MetroLogo size={42} theme={theme} />
+            <MetroLogo size={120} theme={theme} />
           </div>
           
           <h2>{authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}</h2>
@@ -1114,6 +1124,7 @@ export default function App() {
   if (view === 'dashboard') {
     return (
       <div className="dashboard-layout">
+        <PageWatermark theme={theme} />
         <header className="navbar">
           <div className="nav-brand">
             <MetroLogo size={28} theme={theme} />
@@ -1544,6 +1555,7 @@ export default function App() {
   if (view === 'meeting' && currentMeeting) {
     return (
       <div className="meeting-room">
+        <PageWatermark theme={theme} />
         {/* Main Recorder Section */}
         <div className="recording-area">
           <div className="meeting-room-header">
@@ -1708,6 +1720,7 @@ export default function App() {
   if (view === 'detail' && selectedMeeting) {
     return (
       <div className="detail-view">
+        <PageWatermark theme={theme} />
         <div className="back-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button className="btn btn-secondary" onClick={() => { 
             if (viewingFromAdmin) {
@@ -1845,9 +1858,10 @@ export default function App() {
   }
 
   // Admin Panel View
-  if (view === 'admin' && currentUser?.role === 'admin') {
+  if (view === 'admin') {
     return (
       <div className="dashboard-layout">
+        <PageWatermark theme={theme} />
         <header className="navbar">
           <div className="nav-brand">
             <MetroLogo size={28} />
