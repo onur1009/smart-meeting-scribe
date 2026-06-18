@@ -33,10 +33,16 @@ function createWindow() {
 
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
-    // win.webContents.openDevTools();
+    win.webContents.openDevTools();
   } else {
     win.loadFile(path.join(process.env.DIST, 'index.html'));
+    win.webContents.openDevTools();
   }
+
+  // Route renderer console to terminal
+  win.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer] ${message} (at ${sourceId}:${line})`);
+  });
 }
 
 app.on('ready', createWindow);
