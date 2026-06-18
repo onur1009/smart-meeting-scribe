@@ -587,18 +587,44 @@ export default function App() {
         
         // Capture Screen/System Audio
         let screenStream: MediaStream;
-        try {
-          screenStream = await navigator.mediaDevices.getDisplayMedia({
-            audio: true,
-            video: true
-          });
-        } catch (e) {
-          micStream.getTracks().forEach(t => t.stop());
-          throw new Error('Ekran paylaşımı başlatılamadı veya iptal edildi.');
+        
+        const electronAPI = (window as any).electronAPI;
+        if (electronAPI) {
+          try {
+            const sources = await electronAPI.getDesktopSources();
+            const mainScreen = sources.find((s: any) => s.id.startsWith('screen:')) || sources[0];
+            
+            screenStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                mandatory: {
+                  chromeMediaSource: 'desktop'
+                }
+              } as any,
+              video: {
+                mandatory: {
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: mainScreen?.id
+                }
+              } as any
+            });
+          } catch (e) {
+            micStream.getTracks().forEach(t => t.stop());
+            throw new Error('Sistem sesi (Masaüstü Uygulama) üzerinden yakalanamadı.');
+          }
+        } else {
+          try {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({
+              audio: true,
+              video: true
+            });
+          } catch (e) {
+            micStream.getTracks().forEach(t => t.stop());
+            throw new Error('Ekran paylaşımı başlatılamadı veya iptal edildi.');
+          }
         }
 
         const screenAudioTracks = screenStream.getAudioTracks();
-        if (screenAudioTracks.length === 0) {
+        if (screenAudioTracks.length === 0 && !electronAPI) {
           micStream.getTracks().forEach(t => t.stop());
           screenStream.getTracks().forEach(t => t.stop());
           throw new Error("Sistem sesini kaydetmek için ekran paylaşım penceresinde 'Sistem sesini paylaş' (Share system audio) onay kutusunu işaretlemelisiniz.");
