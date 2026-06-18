@@ -1,30 +1,32 @@
-import { app as n, BrowserWindow as t, ipcMain as d, desktopCapturer as c, session as p } from "electron";
+import { app as o, BrowserWindow as t, ipcMain as c, desktopCapturer as l, session as p } from "electron";
 import e from "path";
-process.env.DIST = e.join(__dirname, "../dist");
-process.env.PUBLIC = n.isPackaged ? process.env.DIST : e.join(process.env.DIST, "../public");
+import { fileURLToPath as m } from "url";
+const f = m(import.meta.url), r = e.dirname(f);
+process.env.DIST = e.join(r, "../dist");
+process.env.PUBLIC = o.isPackaged ? process.env.DIST : e.join(process.env.DIST, "../public");
 let s;
-function r() {
+function a() {
   s = new t({
     width: 1200,
     height: 800,
     icon: e.join(process.env.PUBLIC, "logo-light.png"),
     webPreferences: {
-      preload: e.join(__dirname, "preload.js"),
+      preload: e.join(r, "preload.js"),
       nodeIntegration: !1,
       contextIsolation: !0
     }
-  }), p.defaultSession.setPermissionRequestHandler((a, o, i) => {
-    i(o === "media");
+  }), p.defaultSession.setPermissionRequestHandler((d, n, i) => {
+    i(n === "media");
   }), process.env.VITE_DEV_SERVER_URL ? s.loadURL(process.env.VITE_DEV_SERVER_URL) : s.loadFile(e.join(process.env.DIST, "index.html"));
 }
-n.on("ready", r);
-n.on("window-all-closed", () => {
-  process.platform !== "darwin" && n.quit();
+o.on("ready", a);
+o.on("window-all-closed", () => {
+  process.platform !== "darwin" && o.quit();
 });
-n.on("activate", () => {
-  t.getAllWindows().length === 0 && r();
+o.on("activate", () => {
+  t.getAllWindows().length === 0 && a();
 });
-d.handle("get-desktop-sources", async () => (await c.getSources({ types: ["window", "screen"], fetchWindowIcons: !1 })).map((o) => ({
-  id: o.id,
-  name: o.name
+c.handle("get-desktop-sources", async () => (await l.getSources({ types: ["window", "screen"], fetchWindowIcons: !1 })).map((n) => ({
+  id: n.id,
+  name: n.name
 })));
